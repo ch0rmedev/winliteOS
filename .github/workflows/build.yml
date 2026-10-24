@@ -39,10 +39,16 @@ jobs:
             ca-certificates
 
       - name: Configure live-build
-        run: lb config
+        run: |
+          set -o pipefail
+          lb config 2>&1 | tee config.log
+        shell: bash
 
       - name: Build ISO
-        run: lb build
+        run: |
+          set -o pipefail
+          lb build 2>&1 | tee build.log
+        shell: bash
 
       - name: List build output
         if: always()
@@ -51,6 +57,17 @@ jobs:
           ls -lah
           echo "ISO files:"
           find . -maxdepth 2 -type f -name "*.iso" -ls || true
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlite-build-logs
+          path: |
+            build.log
+            config.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload ISO artifact
         if: success()
