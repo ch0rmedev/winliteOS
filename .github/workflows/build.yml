@@ -1,3 +1,4 @@
+
 name: Build WinLite Debian 13 ISO
 
 on:
@@ -14,7 +15,7 @@ permissions:
 
 jobs:
   build-iso:
-    name: Build live USB ISO (Debian 13 amd64)
+    name: Build Debian 13 live USB ISO
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -22,10 +23,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install ISO build dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get install -y \
             live-build \
             debootstrap \
             squashfs-tools \
@@ -48,13 +49,11 @@ jobs:
           set -o pipefail
           sudo lb build 2>&1 | tee build.log
 
-      - name: List build output
+      - name: Find ISO output
         if: always()
         run: |
-          echo "Workspace files:"
-          ls -lah
-          echo "ISO files:"
-          find . -maxdepth 3 -type f -name "*.iso" -ls || true
+          find . -maxdepth 4 -type f \
+            \( -name "*.iso" -o -name "*.log" \) -ls || true
 
       - name: Upload build logs
         if: always()
@@ -67,11 +66,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload ISO artifact
+      - name: Upload ISO
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: winlite-debian13-live-iso-amd64
-          path: live-image-amd64.hybrid.iso
+          path: "*.iso"
           if-no-files-found: error
           retention-days: 7
