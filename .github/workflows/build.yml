@@ -1,0 +1,77 @@
+name: Build WinLite Debian 13 ISO
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "auto/**"
+      - "config/**"
+      - "build.sh"
+      - ".github/workflows/build-iso.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-iso:
+    name: Build live USB ISO (Debian 13 amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install ISO build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            live-build \
+            debootstrap \
+            squashfs-tools \
+            xorriso \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools \
+            ca-certificates
+
+      - name: Configure live-build
+        shell: bash
+        run: |
+          set -o pipefail
+          sudo lb config 2>&1 | tee config.log
+
+      - name: Build ISO
+        shell: bash
+        run: |
+          set -o pipefail
+          sudo lb build 2>&1 | tee build.log
+
+      - name: List build output
+        if: always()
+        run: |
+          echo "Workspace files:"
+          ls -lah
+          echo "ISO files:"
+          find . -maxdepth 3 -type f -name "*.iso" -ls || true
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlite-build-logs
+          path: |
+            build.log
+            config.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload ISO artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlite-debian13-live-iso-amd64
+          path: live-image-amd64.hybrid.iso
+          if-no-files-found: error
+          retention-days: 7
